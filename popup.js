@@ -7,15 +7,6 @@ chrome.runtime.onMessage.addListener(
         if (request.title) {
             document.querySelector("#title").innerText = request.title
         }
-        if (request.start) {
-            NProgress.start()
-        }
-        if (request.progress) {
-            NProgress.set(request.progress)
-        }
-        if (request.done) {
-            NProgress.done()
-        }
     }
 );
 
@@ -37,6 +28,7 @@ async function changeValue(ele,key){
 }
 
 onload=()=>{
+
     Array.from(document.querySelectorAll('input[type="radio"]')).forEach(ele=>{
         ele.onclick=changeRadio
     })
@@ -104,6 +96,11 @@ onload=()=>{
         page_timeout_ele.value=page_timeout
 
 
+    }
+
+    document.querySelector("#help").onclick=async ()=>{
+        const [tab] = await chrome.tabs.query({active: true, lastFocusedWindow: true});
+        await chrome.tabs.sendMessage(tab.id, {showHelp: true});
     }
 
 }
