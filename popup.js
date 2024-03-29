@@ -3,6 +3,9 @@ chrome.runtime.onConnect.addListener(function (port) {
 
     console.debug("popup",port)
     
+    port.onMessage.addListener(function (msg) {
+        console.debug(msg)
+      });
   });
 
 function changeRadio(e) {

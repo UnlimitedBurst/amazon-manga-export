@@ -14,15 +14,15 @@ const config = { childList: true };
 // 选中的漫画封面id
 let currentBook;
 
-chrome.runtime.onConnect.addListener((port) => {
-  port.onMessage.addListener(async function (msg) {
-    if (msg.showHelp) {
-      showFirstTipModal(popover, false);
-    }
-  });
-});
-
 let port;
+
+chrome.runtime.onConnect.addListener((port) => {
+    port.onMessage.addListener(async function (msg) {
+      if (msg.showHelp) {
+        showFirstTipModal(popover, false);
+      }
+    });
+  });
 
 // 等待
 function sleep(timeout) {
@@ -35,12 +35,19 @@ function sleep(timeout) {
 
 function createConnect() {
   port = chrome.runtime.connect({ name: "knockknock" });
-
+  console.debug("content-script port", port);
+  port.onMessage.addListener(async function (msg) {
+    if (msg.showHelp) {
+      showFirstTipModal(popover, false);
+    }else{
+        console.debug(msg)
+    }
+  });
+  port.postMessage({msg:"hello"})
 }
 
 createConnect();
 
-console.debug("content-script port", port);
 
 const manga_id_regex = /(?<=library\-item\-option\-)\w+/;
 function rightMenuEvent(e) {

@@ -23,6 +23,7 @@ function showFirstTipModal(popover, showUseTip, callback) {
         <ol style="font-size: 20px;text-align:left">
           <li>脚本依赖漫画列表页面上下文，如果关闭页面脚本会终止运行。</li>
           <li>脚本导出漫画中，不建议新建标签页查看漫画，会增加被ban的风险。</li>
+          <li>扩展程序图标里的弹出式窗口面板配置仅供开发调试用，不建议普通用户修改。</li>
         </ol>
 
         <div
