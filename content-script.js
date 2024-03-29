@@ -14,12 +14,37 @@ const config = { childList: true };
 // 选中的漫画封面id
 let currentBook;
 
+chrome.runtime.onConnect.addListener((port) => {
+  port.onMessage.addListener(async function (msg) {
+    if (msg.showHelp) {
+      showFirstTipModal(popover, false);
+    }
+  });
+});
+
+let port;
+
+// 等待
+function sleep(timeout) {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve();
+    }, timeout);
+  });
+}
+
+function createConnect() {
+  port = chrome.runtime.connect({ name: "knockknock" });
+
+}
+
+createConnect();
+
+console.debug("content-script port", port);
+
 const manga_id_regex = /(?<=library\-item\-option\-)\w+/;
 function rightMenuEvent(e) {
   let target = e.currentTarget || e.target;
-  // while(!(target instanceof HTMLLIElement)){
-  //     target=target.parentElement
-  // }
 
   currentBook = manga_id_regex.exec(target.id)[0];
   console.debug(`选中`, currentBook);
@@ -267,14 +292,6 @@ class RenderData {
     this.metadata = JSON.parse(e);
   }
 }
-// 等待
-function sleep(timeout) {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve();
-    }, timeout);
-  });
-}
 
 // blob转换文件体积带单位
 function formatBlobSize(blobSize) {
@@ -455,12 +472,16 @@ const popoverCallback = function (mutationsList, observer) {
         function setProgress(i, text) {
           div.style.top = `${i}%`;
 
+          try {
+            port.postMessage({ progress: i });
+          } catch(e){
+            console.error("发送进度失败",e)
+          }
+
           if (i == 100) {
-            chrome.runtime.sendMessage({ done: true });
             div.remove();
             tip.remove();
           } else {
-            chrome.runtime.sendMessage({ start: true });
             tip.innerText = text;
           }
         }
@@ -500,9 +521,13 @@ const popoverCallback = function (mutationsList, observer) {
               token = karamelToken.token;
               continue;
             } else {
-              throw new Error(
-                `非法render数据，请求状态码：${render_data.status},response content type:${contentType}`
+              let second = 30;
+              console.error(
+                `非法render数据，请求状态码：${render_data.status},response content type:${contentType}，${second}秒后请求重试`
               );
+
+              await sleep(second * 1000);
+              continue;
             }
           }
         }
@@ -675,7 +700,7 @@ const popoverCallback = function (mutationsList, observer) {
                     `导出进度：${progress}% ${count}/${imageLength}`
                   );
 
-                  isEnd = count === imageLength;
+                  isEnd = progress === 100;
                   if (isEnd) {
                     break;
                   } else if (count % slice === 0) {
@@ -740,13 +765,13 @@ const popoverCallback = function (mutationsList, observer) {
           )}`
         );
 
-        chrome.runtime.sendMessage({ done: true });
+ 
 
         zip
           .generateAsync({ type: "blob" })
           .then(function (content) {
             // see FileSaver.js
-            chrome.runtime.sendMessage({
+            port.postMessage({
               title: book.title,
               status: "打包完成，下载弹窗中选择保存路径。",
             });
@@ -766,7 +791,7 @@ const popoverCallback = function (mutationsList, observer) {
             setProgress(100);
 
             setTimeout(() => {
-              chrome.runtime.sendMessage({ title: "", status: "" });
+              port.postMessage({ title: "", status: "" });
             }, 3000);
           })
           .finally(() => {
@@ -797,22 +822,6 @@ function disconnect() {
   popoverObserver.disconnect();
 }
 
-chrome.runtime.onMessage.addListener(async function (
-  request,
-  sender,
-  sendResponse
-) {
-  console.log(
-    sender.tab
-      ? "from a content script:" + sender.tab.url
-      : "from the extension"
-  );
-  if (request.showHelp) {
-    const { showUseTip } = await chrome.storage.local.get(["showUseTip"]);
-    showFirstTipModal(popover, showUseTip);
-  }
-});
-
 onload = async () => {
   popover = document.querySelector("#cover");
   console.debug("popover", popover);
@@ -820,8 +829,9 @@ onload = async () => {
   const { showUseTip } = await chrome.storage.local.get(["showUseTip"]);
 
   if (showUseTip) {
-    showFirstTipModal(popover, showUseTip, () => {
-      chrome.storage.local.set({ showUseTip: false });
+    showFirstTipModal(popover, showUseTip, async () => {
+      await chrome.storage.local.set({ showUseTip: false });
+      console.info("不再显示使用帮助");
     });
   }
 

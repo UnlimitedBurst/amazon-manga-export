@@ -1,3 +1,10 @@
+chrome.runtime.onConnect.addListener(function (port) {
+    console.assert(port.name === "knockknock");
+
+    console.debug("popup",port)
+    
+  });
+
 function changeRadio(e) {
   const ele = document.querySelector("#pageSize");
   if (e.target.value === "1") {
@@ -52,7 +59,7 @@ onload = () => {
   chrome.storage.local.get(["per_img_timeout","slice","page_timeout"]).then(({per_img_timeout,slice,page_timeout})=>{
         console.info("per_img_timeout",per_img_timeout,"slice",slice,"page_timeout",page_timeout)
 
-        if((+per_img_timeout)>0){
+        if((+per_img_timeout)>=0){
             per_img_timeout_ele.value=+per_img_timeout
         }
 
@@ -60,7 +67,7 @@ onload = () => {
             slice_ele.value=+slice
         }
 
-        if((+page_timeout)>0){
+        if((+page_timeout)>=0){
             page_timeout_ele.value=+page_timeout
         }
     })
@@ -94,6 +101,10 @@ onload = () => {
       active: true,
       lastFocusedWindow: true,
     });
-    await chrome.tabs.sendMessage(tab.id, { showHelp: true });
+    
+    const port=chrome.tabs.connect(tab.id);
+    console.info(port)
+    port.postMessage({ showHelp: true });
+    
   };
 };

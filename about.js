@@ -45,9 +45,9 @@ function showFirstTipModal(popover, showUseTip, callback) {
 
   const btn = tipModal.querySelector(".btn");
   if (showUseTip) {
-    btn.onclick = () => {
+    btn.onclick = async () => {
       tipModal.remove();
-      callback && callback();
+      callback && await callback();
     };
   } else {
     btn.remove();
