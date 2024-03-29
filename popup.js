@@ -49,6 +49,22 @@ onload = () => {
 
   changeValue(page_timeout_ele, "page_timeout");
 
+  chrome.storage.local.get(["per_img_timeout","slice","page_timeout"]).then(({per_img_timeout,slice,page_timeout})=>{
+        console.info("per_img_timeout",per_img_timeout,"slice",slice,"page_timeout",page_timeout)
+
+        if((+per_img_timeout)>0){
+            per_img_timeout_ele.value=+per_img_timeout
+        }
+
+        if((+slice)>0){
+            slice_ele.value=+slice
+        }
+
+        if((+page_timeout)>0){
+            page_timeout_ele.value=+page_timeout
+        }
+    })
+
   document.querySelector("#close").onclick = () => {
     top.close();
   };
