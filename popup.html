@@ -3,27 +3,68 @@
 
 <head>
     <script src="popup.js"></script>
-    <script src='nprogress.js'></script>
-    <link rel='stylesheet' href='nprogress.css' />
     <style>
         body {
             width: 300px;
             padding: 10px;
+
+            font-size: 16px;
         }
 
         #status {
             margin-top: 10px;
         }
 
-        font {
-            size: 16px;
+        
+        .input{
+            width: 50px;
+            text-align: center;
         }
+
+        #page_timeout{
+            width: 60px;
+        }
+      
+        .d-none{
+            display: none;
+        }
+        .d-inline{
+            display: inline;
+        }
+        
     </style>
 </head>
 
 <body>
-    <p id="title"></p>
+    <hr/>
+    <h3>基础配置：</h3>
+    <div>
+        抓取页数：
+        <br/>
+        <input type="radio" name="type"  value="1"  checked>所有页数</input>
+        <br/>
+        <input type="radio" name="type" value="2" >指定抓取</input>
+        <div class="d-none"><input id="pageSize" type="number" min="1"  class="input" />页</div>
+    </div>
+    
+    <hr/>
+    <h3>延时配置：</h3>
+    <div>
+        每抓取<span>1张</span>图片等待 <input id="per_img_timeout" class="input"  type="number" value="2000"/>毫秒
+    </div>
+    <div>
+        每抓取<input id="slice" type="number" class="input"/><span>张</span>图片等待<input type="number" id="page_timeout" class="input"/>毫秒
+    </div>
+    
+    <hr/>
+    <h3>抓取进度：</h3>
+    <p id="title">当前没有漫画导出</p>
     <p id="status"></p>
+    <hr/>
+    <div>
+        <button id="reset">重置</button>
+        <button id="close">保存配置</button>
+    </div>
 </body>
 
 </html>
