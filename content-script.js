@@ -408,51 +408,6 @@ const popoverCallback = function (mutationsList, observer) {
 
         addNode.click();
 
-        const cover_ele = document.querySelector(
-          `#coverContainer-${currentBook}`
-        );
-        const div = document.createElement("div");
-
-        div.setAttribute(
-          "style",
-          `position: absolute;
-                left: 0;
-                top: 0;
-                right: 0;
-                bottom: 0;
-                background: black;
-                z-index: 999;
-                opacity: 0.2;`
-        );
-
-        cover_ele.append(div);
-
-        const tip = document.createElement("div");
-        tip.setAttribute(
-          "style",
-          `
-                    position: absolute;
-                    bottom: -8%;
-                    text-align: center;
-                    white-space:nowrap;
-                    font-size: 20px;
-                    z-index:999;
-                `
-        );
-
-        cover_ele.parentElement.append(tip);
-
-        function setProgress(i, txt) {
-          div.style.top = `${i}%`;
-
-          if (i == 100) {
-            div.remove();
-            tip.remove();
-          } else {
-            tip.innerText = txt;
-          }
-        }
-
         let book = itemViewResponse.itemsList.find(
           (s) => s.asin === currentBook
         );
@@ -463,20 +418,52 @@ const popoverCallback = function (mutationsList, observer) {
 
         console.info(`导出漫画`, book.title);
 
-        // const result=await chrome.storage.local.get([book.asin])
+        const cover_ele = document.querySelector(
+          `#coverContainer-${currentBook}`
+        );
+        const div = document.createElement("div");
 
-        // if(result!==undefined&&result[book.asin]){
-        //     if(confirm(`检测到此漫画缓存了${result[book.asin].size}图包，确定则导出图包，否则重新生成图包。`)){
-        //         const a=document.createElement("a")
-        //         a.href=result[book.asin].url
-        //         a.download=result[book.asin].name
-        //         a.click()
-        //         return
-        //     }else{
-        //         URL.revokeObjectURL(result[book.asin].url)
-        //         chrome.storage.local.remove([book.asin])
-        //     }
-        // }
+        div.setAttribute(
+          "style",
+          `position: absolute;
+                  left: 0;
+                  top: 0;
+                  right: 0;
+                  bottom: 0;
+                  background: black;
+                  z-index: 999;
+                  opacity: 0.2;`
+        );
+
+        cover_ele.append(div);
+
+        const tip = document.createElement("div");
+        tip.setAttribute(
+          "style",
+          `
+                      position: absolute;
+                      bottom: -8%;
+                      text-align: center;
+                      white-space:nowrap;
+                      font-size: 20px;
+                      z-index:999;
+                  `
+        );
+
+        cover_ele.parentElement.append(tip);
+
+        function setProgress(i, text) {
+          div.style.top = `${i}%`;
+
+          if (i == 100) {
+            chrome.runtime.sendMessage({ done: true });
+            div.remove();
+            tip.remove();
+          } else {
+            chrome.runtime.sendMessage({ start: true });
+            tip.innerText = text;
+          }
+        }
 
         const dom = await (await fetch(`/manga/${book.asin}`)).text();
         let domparser = new DOMParser();
@@ -753,6 +740,8 @@ const popoverCallback = function (mutationsList, observer) {
           )}`
         );
 
+        chrome.runtime.sendMessage({ done: true });
+
         zip
           .generateAsync({ type: "blob" })
           .then(function (content) {
@@ -776,7 +765,6 @@ const popoverCallback = function (mutationsList, observer) {
 
             setProgress(100);
 
-            chrome.runtime.sendMessage({ done: true });
             setTimeout(() => {
               chrome.runtime.sendMessage({ title: "", status: "" });
             }, 3000);
@@ -809,7 +797,11 @@ function disconnect() {
   popoverObserver.disconnect();
 }
 
-chrome.runtime.onMessage.addListener(async function (request, sender, sendResponse) {
+chrome.runtime.onMessage.addListener(async function (
+  request,
+  sender,
+  sendResponse
+) {
   console.log(
     sender.tab
       ? "from a content script:" + sender.tab.url
@@ -817,7 +809,7 @@ chrome.runtime.onMessage.addListener(async function (request, sender, sendRespon
   );
   if (request.showHelp) {
     const { showUseTip } = await chrome.storage.local.get(["showUseTip"]);
-    showFirstTipModal(popover,showUseTip);
+    showFirstTipModal(popover, showUseTip);
   }
 });
 
@@ -828,7 +820,7 @@ onload = async () => {
   const { showUseTip } = await chrome.storage.local.get(["showUseTip"]);
 
   if (showUseTip) {
-    showFirstTipModal(popover,showUseTip, () => {
+    showFirstTipModal(popover, showUseTip, () => {
       chrome.storage.local.set({ showUseTip: false });
     });
   }

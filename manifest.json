@@ -1,44 +1,31 @@
 {
-    "name": "亚马逊漫画下载器",
-    "description": "亚马逊漫画下载器",
-    "version": "1.0.1",
-    "permissions": [
-        "activeTab",
-        "storage"
-    ],
-    "manifest_version": 3,
-    "action": {
-        "default_icon": {
-            "16": "img/icons/omega-action-16.png",
-            "19": "img/icons/omega-action-19.png",
-            "24": "img/icons/omega-action-24.png",
-            "32": "img/icons/omega-action-32.png"
-        },
-        "default_popup": "popup.html",
-        "default_title": "点击查看导出进度"
+  "name": "亚马逊漫画下载器",
+  "description": "亚马逊漫画下载器",
+  "version": "1.0.1",
+  "permissions": ["activeTab", "storage"],
+  "manifest_version": 3,
+  "action": {
+    "default_icon": {
+      "32": "img/icons/download.png"
     },
-    "icons": {
-        "128": "img/icons/omega-128.png",
-        "16": "img/icons/omega-action-16.png",
-        "24": "img/icons/omega-action-24.png",
-        "32": "img/icons/omega-action-32.png",
-        "48": "img/icons/omega-48.png",
-        "64": "img/icons/omega-64.png"
-    },
-    "background": {
-        "service_worker": "background.js"
-    },
-    "content_scripts": [
-        {
-            "matches": [
-                "https://read.amazon.co.jp/kindle-library*"
-            ],
-            "js": [
-                "about.js",
-                "FileSaver.min.js",
-                "jszip.min.js",
-                "content-script.js"
-            ]
-        }
-    ]
+    "default_popup": "popup.html",
+    "default_title": "点击查看导出进度"
+  },
+  "icons": {
+    "128": "img/icons/download.png"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://read.amazon.co.jp/kindle-library*"],
+      "js": [
+        "about.js",
+        "FileSaver.min.js",
+        "jszip.min.js",
+        "content-script.js"
+      ]
+    }
+  ]
 }
