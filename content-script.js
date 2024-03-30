@@ -1,10 +1,8 @@
-let popover;
-
 let itemViewResponse;
 
 let side_bar_filters;
 
-let popoverObserver;
+let observerMap = new Map();
 
 let comic_menu;
 
@@ -12,17 +10,17 @@ let comic_menu;
 const config = { childList: true };
 
 // 选中的漫画封面id
-let currentBook;
+let currentBook = null;
 
 let port;
 
 chrome.runtime.onConnect.addListener((port) => {
-    port.onMessage.addListener(async function (msg) {
-      if (msg.showHelp) {
-        showFirstTipModal(popover, false);
-      }
-    });
+  port.onMessage.addListener(async function (msg) {
+    if (msg.showHelp) {
+      showFirstTipModal(document.querySelector("#cover"), false);
+    }
   });
+});
 
 // 等待
 function sleep(timeout) {
@@ -38,28 +36,15 @@ function createConnect() {
   console.debug("content-script port", port);
   port.onMessage.addListener(async function (msg) {
     if (msg.showHelp) {
-      showFirstTipModal(popover, false);
-    }else{
-        console.debug(msg)
+      showFirstTipModal(document.querySelector("#cover"), false);
+    } else {
+      console.debug(msg);
     }
   });
-  port.postMessage({msg:"hello"})
+  port.postMessage({ msg: "hello" });
 }
 
 createConnect();
-
-
-const manga_id_regex = /(?<=library\-item\-option\-)\w+/;
-function rightMenuEvent(e) {
-  let target = e.currentTarget || e.target;
-
-  currentBook = manga_id_regex.exec(target.id)[0];
-  console.debug(`选中`, currentBook);
-}
-
-function changeRightMenu(ele) {
-  ele.addEventListener("contextmenu", rightMenuEvent);
-}
 
 function base64StringToArrayBuffer(e) {
   const n = atob(e),
@@ -404,472 +389,553 @@ async function getToken(asin) {
 }
 
 // 当观察到变动时执行的回调函数
-const popoverCallback = function (mutationsList, observer) {
+function backdroprCallback(mutationsList, observer) {
   for (let mutation of mutationsList) {
-    if (mutation.addedNodes[0] instanceof HTMLLIElement) {
-      changeRightMenu(mutation.addedNodes[0]);
-    } else if (
-      mutation.addedNodes.length === 1 &&
-      mutation.addedNodes[0].id === "backdrop"
-    ) {
-      // 漫画右击菜单增加下载漫画选项
-      const addNode = mutation.addedNodes[0];
-      let context_menu = addNode.querySelector("ul");
-      console.debug("右键菜单", context_menu);
+    if (mutation.addedNodes.length > 0) {
+      mutation.addedNodes.forEach((ele) => {
+        if (
+          mutation.target.id === "library" &&
+          ele.querySelector("#cover") != null
+        ) {
+          let e = ele.querySelector("#cover");
+          showHelp(e);
+          observe(e);
+        } else if (mutation.target.id === "cover" && ele.id === "backdrop") {
+          // 漫画右击菜单增加下载漫画选项
+          const addNode = document.querySelector("#backdrop");
+          let context_menu = addNode.querySelector("ul");
+          console.debug("扩展右键菜单", context_menu);
 
-      const li = document.createElement("li");
+          const li = document.createElement("li");
 
-      li.dataset.asin = currentBook;
+          li.innerHTML = `<div id="tooltip-parent" class="${
+            document.querySelector("#tooltip-parent").className
+          }"><p class="${
+            document.querySelector("#tooltip-parent>p").className
+          }" >导出漫画</p></div>`;
 
-      li.innerHTML = `<div id="tooltip-parent" class="${
-        document.querySelector("#tooltip-parent").className
-      }"><p class="${
-        document.querySelector("#tooltip-parent>p").className
-      }" >导出漫画</p></div>`;
+          li.onclick = async (e) => {
+            const startTime = Date.now();
 
-      li.onclick = async (e) => {
-        const startTime = Date.now();
+            addNode.click();
 
-        addNode.click();
+            if (currentBook === null) {
+              let msg = "无法找到漫画信息";
+              showModal(document.querySelector("#cover"), msg);
+              throw new Error(msg);
+            }
 
-        let book = itemViewResponse.itemsList.find(
-          (s) => s.asin === currentBook
-        );
+            console.info(`导出漫画`, currentBook.title);
 
-        if (book === undefined) {
-          throw new Error("无法找到漫画信息");
-        }
+            const cover_ele = document.querySelector(
+              `#coverContainer-${currentBook.asin}`
+            );
+            const div = document.createElement("div");
 
-        console.info(`导出漫画`, book.title);
-
-        const cover_ele = document.querySelector(
-          `#coverContainer-${currentBook}`
-        );
-        const div = document.createElement("div");
-
-        div.setAttribute(
-          "style",
-          `position: absolute;
-                  left: 0;
-                  top: 0;
-                  right: 0;
-                  bottom: 0;
-                  background: black;
-                  z-index: 999;
-                  opacity: 0.2;`
-        );
-
-        cover_ele.append(div);
-
-        const tip = document.createElement("div");
-        tip.setAttribute(
-          "style",
-          `
-                      position: absolute;
-                      bottom: -8%;
-                      text-align: center;
-                      white-space:nowrap;
-                      font-size: 20px;
-                      z-index:999;
-                  `
-        );
-
-        cover_ele.parentElement.append(tip);
-
-        function setProgress(i, text) {
-          div.style.top = `${i}%`;
-
-          try {
-            port.postMessage({ progress: i });
-          } catch(e){
-            console.error("发送进度失败",e)
-          }
-
-          if (i == 100) {
-            div.remove();
-            tip.remove();
-          } else {
-            tip.innerText = text;
-          }
-        }
-
-        const dom = await (await fetch(`/manga/${book.asin}`)).text();
-        let domparser = new DOMParser();
-        let doc = domparser.parseFromString(dom, "text/html");
-        let bookInfo = JSON.parse(doc.querySelector("#bookInfo").innerText);
-        console.info("bookInfo", bookInfo);
-
-        let { contentGuid: revision, asin } = bookInfo;
-
-        let { expiresAt, token } = await getToken(book.asin);
-
-        async function get_render_data(startingPosition, numPage) {
-          let reply = 3;
-
-          while (reply-- > 0) {
-            const render_data = await fetch(
-              `/renderer/render?version=3.0&asin=${asin}&contentType=FullBook&revision=${revision}&fontFamily=Bookerly&fontSize=4.95&lineHeight=1.4&dpi=160&height=${innerHeight}&width=${innerWidth}&marginBottom=0&marginLeft=9&marginRight=9&marginTop=0&maxNumberColumns=2&theme=dark&locationMap=true&packageType=TAR&encryptionVersion=NONE&numPage=${numPage}&skipPageCount=0&startingPosition=${startingPosition}&bundleImages=false&token=${encodeURIComponent(
-                token
-              )}`
+            div.setAttribute(
+              "style",
+              `position: absolute;
+                      left: 0;
+                      top: 0;
+                      right: 0;
+                      bottom: 0;
+                      background: black;
+                      z-index: 999;
+                      opacity: 0.2;`
             );
 
-            const contentType = render_data.headers.get("content-type");
-            if (
-              render_data.status === 200 &&
-              contentType === "application/x-tar"
-            ) {
-              return new RenderData(await render_data.arrayBuffer(), {
-                expiresAt,
-                token,
-              });
-            } else if (render_data.status === 419) {
-              const karamelToken = await getToken(book.asin);
-              expiresAt = karamelToken.karamelToken;
-              token = karamelToken.token;
-              continue;
-            } else {
+            cover_ele.append(div);
+
+            const tip = document.createElement("div");
+            tip.setAttribute(
+              "style",
+              `
+                          position: absolute;
+                          bottom: -8%;
+                          text-align: center;
+                          white-space:nowrap;
+                          font-size: 20px;
+                          z-index:999;
+                      `
+            );
+
+            cover_ele.parentElement.append(tip);
+
+            function setProgress(i, text) {
+              div.style.top = `${i}%`;
+
+              try {
+                port.postMessage({
+                  progress: i,
+                  icon:
+                    i < 100
+                      ? "/img/icons/download_active.png"
+                      : "/img/icons/download.png",
+                });
+              } catch (e) {
+                console.error("发送进度失败", e);
+              }
+
+              if (i == 100) {
+                div.remove();
+                tip.remove();
+              } else {
+                tip.innerText = text;
+              }
+            }
+
+            const dom = await (
+              await fetch(`/manga/${currentBook.asin}`)
+            ).text();
+            let domparser = new DOMParser();
+            let doc = domparser.parseFromString(dom, "text/html");
+            let bookInfo = JSON.parse(doc.querySelector("#bookInfo").innerText);
+            console.info("bookInfo", bookInfo);
+
+            let { contentGuid: revision, asin, title } = bookInfo;
+
+            let { expiresAt, token } = await getToken(asin);
+
+            async function get_render_data(startingPosition, numPage) {
+              let reply = 3;
               let second = 30;
-              console.error(
-                `非法render数据，请求状态码：${render_data.status},response content type:${contentType}，${second}秒后请求重试`
-              );
-
-              await sleep(second * 1000);
-              continue;
-            }
-          }
-        }
-
-        console.info(`开始解析漫画render数据`);
-        let render_data = await get_render_data(0, 0);
-
-        let { images: imageLength, slice } = await chrome.storage.local.get([
-          "images",
-          "slice",
-        ]);
-
-        const totalImageLength = render_data.locationMap.locations.length - 1;
-
-        if (imageLength === null || imageLength > totalImageLength) {
-          imageLength = totalImageLength;
-        }
-
-        let count = 0;
-        let totalSize = 0;
-        let startingPosition = 1;
-        let isEnd = false;
-        let { per_img_timeout, page_timeout } = await chrome.storage.local.get([
-          "per_img_timeout",
-          "page_timeout",
-        ]);
-        console.info(
-          `每抓取1张图片等待${per_img_timeout}毫秒，每抓取${slice}张图片等待${page_timeout}毫秒`
-        );
-
-        const zip = new JSZip();
-
-        do {
-          console.debug("startingPosition", startingPosition);
-
-          async function refreshAuth() {
-            const renderStartTime = Date.now();
-            render_data = await get_render_data(startingPosition, slice);
-
-            console.info(
-              "漫画render数据解析完成，耗时：",
-              Date.now() - renderStartTime + "ms",
-              "\nrender_data",
-              render_data
-            );
-
-            const {
-              manifest: {
-                cdn: { baseUrl, authParameter, isEncrypted },
-                cdnResources,
-              },
-              pages,
-            } = render_data;
-
-            const pageData = [];
-            for (const { children, endPositionId } of pages.values()) {
-              children.map((item) => {
-                item.cdnResources = cdnResources.find(
-                  ({ url }) => item.imageReference === url
-                );
-                if (item.cdnResources === undefined) {
-                  console.error(
-                    `无法找到图片【${item.imageReference}】二进制数据`
-                  );
-                }
-                return item;
-              });
-
-              pageData.push({
-                endPositionId,
-                children: children.sort((a, b) => b.elementId - a.elementId),
-              });
-            }
-            return {
-              baseUrl,
-              pageData,
-              cdnResources,
-              authParameter,
-              isEncrypted,
-            };
-          }
-
-          let { baseUrl, isEncrypted, pageData, cdnResources, authParameter } =
-            await refreshAuth();
-
-          console.info(`总共要下载${cdnResources.length}张图片`);
-
-          console.debug(`分段信息`, pageData);
-
-          console.info("开始下载图片");
-
-          for (let index = 0; index < pageData.length; index++) {
-            let { endPositionId, children } = pageData[index];
-
-            let filename;
-
-            let lastImgBlob;
-
-            let startCount = count;
-            for (
-              let childIndex = 0;
-              childIndex < children.length;
-              childIndex++
-            ) {
-              let {
-                cdnResources: { url },
-              } = children[childIndex];
-              authParameter =
-                authParameter ||
-                children[childIndex].cdnResources.authParameter;
-
-              console.debug(`下载第${count + 1}张图片`);
-              const imgStartTime = Date.now();
-              let reply = 3,
-                c,
-                fullurl = `${baseUrl}/${url}?${authParameter}&expiration=${expiresAt}&token=${encodeURIComponent(
-                  token
-                )}`;
-
               while (reply-- > 0) {
                 try {
-                  c = await fetch(fullurl);
-
-                  let u,
-                    contentType = c.headers.get("content-type");
-                  if (isEncrypted && contentType === "text/plain") {
-                    console.debug(`解密第${count + 1}张图片`);
-                    const e = await c.arrayBuffer();
-                    const t = await decrypt(e, { token, expiresAt });
-                    u = new Blob([t]);
-                  } else if (
-                    !isEncrypted &&
-                    contentType === "application/octet-stream"
-                  ) {
-                    u = await c.blob();
-                  } else {
-                    throw new Error(
-                      `isEncrypted:${isEncrypted},response content-type:${contentType}`
-                    );
-                  }
-                  console.debug(
-                    `第${count + 1}张图片尺寸`,
-                    formatBlobSize(u.size)
-                  );
-                  totalSize += u.size;
-
-                  if (lastImgBlob !== undefined) {
-                    u = await mergeBlobsHorizontally([lastImgBlob, u]);
-                    filename = `${startCount + 1}_${
-                      startCount + children.length
-                    }`;
-                  } else {
-                    filename = `${startCount + 1}`;
-                  }
-                  lastImgBlob = u;
-
-                  count++;
-
-                  let progress = +((count * 100) / imageLength).toFixed(2);
-                  console.debug(
-                    `处理进度：${progress}%，当前图片处理时间${
-                      Date.now() - imgStartTime
-                    }ms，累计处理时间${formatMillisecondsToMinutesSeconds(
-                      Date.now() - startTime
+                  const render_data = await fetch(
+                    `/renderer/render?version=3.0&asin=${asin}&contentType=FullBook&revision=${revision}&fontFamily=Bookerly&fontSize=4.95&lineHeight=1.4&dpi=160&height=${innerHeight}&width=${innerWidth}&marginBottom=0&marginLeft=9&marginRight=9&marginTop=0&maxNumberColumns=2&theme=dark&locationMap=true&packageType=TAR&encryptionVersion=NONE&numPage=${numPage}&skipPageCount=0&startingPosition=${startingPosition}&bundleImages=false&token=${encodeURIComponent(
+                      token
                     )}`
                   );
 
-                  setProgress(
-                    progress,
-                    `导出进度：${progress}% ${count}/${imageLength}`
-                  );
-
-                  isEnd = progress === 100;
-                  if (isEnd) {
-                    break;
-                  } else if (count % slice === 0) {
-                    console.info(
-                      `抓取了${count}张图片，等待${page_timeout}ms继续抓取`
-                    );
-                    await sleep(page_timeout);
-                  } else {
-                    await sleep(per_img_timeout);
-                  }
-                } finally {
-                  if (c && c.status === 200 && filename) {
-                    break;
-                  } else {
-                    const error = `下载第${count + 1}张图片出现异常${
-                      c !== undefined ? `,请求状态码：${c.status}` : ""
-                    }`;
-                    console.error(error);
-                    chrome.storage.local.set({
-                      error: { e: error, fullurl, time: Date.now() },
+                  const contentType = render_data.headers.get("content-type");
+                  if (
+                    render_data.status === 200 &&
+                    contentType === "application/x-tar"
+                  ) {
+                    return new RenderData(await render_data.arrayBuffer(), {
+                      expiresAt,
+                      token,
                     });
-                    const errWait = 30 * 1000;
-                    console.info(`${errWait}ms 后重新请求`);
+                  } else if (render_data.status === 419) {
+                    const karamelToken = await getToken(asin);
+                    expiresAt = karamelToken.karamelToken;
+                    token = karamelToken.token;
+                    continue;
+                  } else {
+                    
+                    console.error(
+                      `非法render数据，请求状态码：${render_data.status},response content type:${contentType}，${second}秒后请求重试`
+                    );
 
-                    await sleep(errWait);
-
-                    if (c.status === 403) {
-                      let newAuth = await refreshAuth();
-
-                      baseUrl = newAuth.baseUrl;
-                      isEncrypted = newAuth.isEncrypted;
-                      pageData = newAuth.pageData;
-                      children = pageData[index].children;
-                      url = children[childIndex].cdnResources.url;
-                      authParameter =
-                        newAuth.authParameter ||
-                        children[childIndex].cdnResources.authParameter;
-
-                      debugger;
-                    } else if (c.status === 419) {
-                      const karamelToken = await getToken(book.asin);
-                      expiresAt = karamelToken.karamelToken;
-                      token = karamelToken.token;
-                    }
-
+                    await sleep(second * 1000);
                     continue;
                   }
+                } catch (e) {
+                  console.error(`render请求失败`,e,`${second}秒后请求重试`)
+                  await sleep(second * 1000);
+                  continue;
                 }
               }
             }
 
-            startingPosition = endPositionId + 1;
+            console.info(`开始解析漫画render数据`);
+            let render_data = await get_render_data(0, 0);
 
-            console.debug(`打包第${filename}张图片`);
-            filename && zip.file(`${filename}.jfif`, lastImgBlob);
-          }
-        } while (!isEnd);
+            let { images: imageLength, slice } = await chrome.storage.local.get(
+              ["images", "slice"]
+            );
 
-        console.info(
-          `${imageLength}张图片打包完成，累计处理时间${formatMillisecondsToMinutesSeconds(
-            Date.now() - startTime
-          )}`
-        );
+            const totalImageLength =
+              render_data.locationMap.locations.length - 1;
 
- 
+            if (imageLength === null || imageLength > totalImageLength) {
+              imageLength = totalImageLength;
+            }
 
-        zip
-          .generateAsync({ type: "blob" })
-          .then(function (content) {
-            // see FileSaver.js
-            port.postMessage({
-              title: book.title,
-              status: "打包完成，下载弹窗中选择保存路径。",
-            });
-            const zipSize = formatBlobSize(content.size);
-            console.info("图片压缩包体积", zipSize);
-            const zipName = `${book.title}.zip`;
-            chrome.storage.local.set({
-              [asin]: {
-                url: URL.createObjectURL(content),
-                size: zipSize,
-                name: zipName,
-              },
-            });
+            let count = 0;
+            let totalSize = 0;
+            let startingPosition = 1;
+            let isEnd = false;
+            let { per_img_timeout, page_timeout } =
+              await chrome.storage.local.get([
+                "per_img_timeout",
+                "page_timeout",
+              ]);
+            console.info(
+              `每抓取1张图片等待${per_img_timeout}毫秒，每抓取${slice}张图片等待${page_timeout}毫秒`
+            );
 
-            saveAs(content, zipName);
+            const zip = new JSZip();
 
-            setProgress(100);
+            do {
+              console.debug("startingPosition", startingPosition);
 
-            setTimeout(() => {
-              port.postMessage({ title: "", status: "" });
-            }, 3000);
-          })
-          .finally(() => {
-            console.info(`漫画打包完成`);
-          });
-      };
+              async function refreshAuth() {
+                const renderStartTime = Date.now();
+                render_data = await get_render_data(startingPosition, slice);
 
-      context_menu.append(li);
+                console.info(
+                  "漫画render数据解析完成，耗时：",
+                  Date.now() - renderStartTime + "ms",
+                  "\nrender_data",
+                  render_data
+                );
+
+                const {
+                  manifest: {
+                    cdn: { baseUrl, authParameter, isEncrypted },
+                    cdnResources,
+                  },
+                  pages,
+                } = render_data;
+
+                const pageData = [];
+                for (const { children, endPositionId } of pages.values()) {
+                  children.map((item) => {
+                    item.cdnResources = cdnResources.find(
+                      ({ url }) => item.imageReference === url
+                    );
+                    if (item.cdnResources === undefined) {
+                      console.error(
+                        `无法找到图片【${item.imageReference}】二进制数据`
+                      );
+                    }
+                    return item;
+                  });
+
+                  pageData.push({
+                    endPositionId,
+                    children: children.sort(
+                      (a, b) => b.elementId - a.elementId
+                    ),
+                  });
+                }
+                return {
+                  baseUrl,
+                  pageData,
+                  cdnResources,
+                  authParameter,
+                  isEncrypted,
+                };
+              }
+
+              let {
+                baseUrl,
+                isEncrypted,
+                pageData,
+                cdnResources,
+                authParameter,
+              } = await refreshAuth();
+
+              console.info(`总共要下载${cdnResources.length}张图片`);
+
+              console.debug(`分段信息`, pageData);
+
+              console.info("开始下载图片");
+
+              for (let index = 0; index < pageData.length; index++) {
+                let { endPositionId, children } = pageData[index];
+
+                let filename;
+
+                let lastImgBlob;
+
+                let startCount = count;
+                for (
+                  let childIndex = 0;
+                  childIndex < children.length;
+                  childIndex++
+                ) {
+                  let {
+                    cdnResources: { url },
+                  } = children[childIndex];
+                  authParameter =
+                    authParameter ||
+                    children[childIndex].cdnResources.authParameter;
+
+                  console.debug(`下载第${count + 1}张图片`);
+                  const imgStartTime = Date.now();
+                  let reply = 3,
+                    c,
+                    fullurl = `${baseUrl}/${url}?${authParameter}&expiration=${expiresAt}&token=${encodeURIComponent(
+                      token
+                    )}`;
+
+                  while (reply-- > 0) {
+                    try {
+                      c = await fetch(fullurl);
+
+                      let u,
+                        contentType = c.headers.get("content-type");
+                      if (isEncrypted && contentType === "text/plain") {
+                        console.debug(`解密第${count + 1}张图片`);
+                        const e = await c.arrayBuffer();
+                        const t = await decrypt(e, { token, expiresAt });
+                        u = new Blob([t]);
+                      } else if (
+                        !isEncrypted &&
+                        contentType === "application/octet-stream"
+                      ) {
+                        u = await c.blob();
+                      } else {
+                        throw new Error(
+                          `isEncrypted:${isEncrypted},response content-type:${contentType}`
+                        );
+                      }
+                      console.debug(
+                        `第${count + 1}张图片尺寸`,
+                        formatBlobSize(u.size)
+                      );
+                      totalSize += u.size;
+
+                      if (lastImgBlob !== undefined) {
+                        u = await mergeBlobsHorizontally([lastImgBlob, u]);
+                        filename = `${startCount + 1}_${
+                          startCount + children.length
+                        }`;
+                      } else {
+                        filename = `${startCount + 1}`;
+                      }
+                      lastImgBlob = u;
+
+                      count++;
+
+                      let progress = +((count * 100) / imageLength).toFixed(2);
+                      console.debug(
+                        `处理进度：${progress}%，当前图片处理时间${
+                          Date.now() - imgStartTime
+                        }ms，累计处理时间${formatMillisecondsToMinutesSeconds(
+                          Date.now() - startTime
+                        )}`
+                      );
+
+                      setProgress(
+                        progress,
+                        `导出进度：${progress}% ${count}/${imageLength}`
+                      );
+
+                      isEnd = progress === 100;
+                      if (isEnd) {
+                        break;
+                      } else if (count % slice === 0) {
+                        console.info(
+                          `抓取了${count}张图片，等待${page_timeout}ms继续抓取`
+                        );
+                        await sleep(page_timeout);
+                      } else {
+                        await sleep(per_img_timeout);
+                      }
+                    } finally {
+                      if (c && c.status === 200 && filename) {
+                        break;
+                      } else {
+                        const error = `下载第${count + 1}张图片出现异常${
+                          c !== undefined ? `,请求状态码：${c.status}` : ""
+                        }`;
+                        console.error(error);
+                        chrome.storage.local.set({
+                          error: { e: error, fullurl, time: Date.now() },
+                        });
+                        const errWait = 30 * 1000;
+                        console.info(`${errWait}ms 后重新请求`);
+
+                        await sleep(errWait);
+
+                        if (c.status === 403) {
+                          let newAuth = await refreshAuth();
+
+                          baseUrl = newAuth.baseUrl;
+                          isEncrypted = newAuth.isEncrypted;
+                          pageData = newAuth.pageData;
+                          children = pageData[index].children;
+                          url = children[childIndex].cdnResources.url;
+                          authParameter =
+                            newAuth.authParameter ||
+                            children[childIndex].cdnResources.authParameter;
+
+                          debugger;
+                        } else if (c.status === 419) {
+                          const karamelToken = await getToken(asin);
+                          expiresAt = karamelToken.karamelToken;
+                          token = karamelToken.token;
+                        }
+
+                        continue;
+                      }
+                    }
+                  }
+                }
+
+                startingPosition = endPositionId + 1;
+
+                console.debug(`打包第${filename}张图片`);
+                filename && zip.file(`${filename}.jfif`, lastImgBlob);
+              }
+            } while (!isEnd);
+
+            console.info(
+              `${imageLength}张图片打包完成，累计处理时间${formatMillisecondsToMinutesSeconds(
+                Date.now() - startTime
+              )}`
+            );
+
+            zip
+              .generateAsync({ type: "blob" })
+              .then(function (content) {
+                // see FileSaver.js
+                port.postMessage({
+                  title,
+                  status: "打包完成，下载弹窗中选择保存路径。",
+                });
+                const zipSize = formatBlobSize(content.size);
+                console.info("图片压缩包体积", zipSize);
+                const zipName = `${title}.zip`;
+                chrome.storage.local.set({
+                  [asin]: {
+                    url: URL.createObjectURL(content),
+                    size: zipSize,
+                    name: zipName,
+                  },
+                });
+
+                saveAs(content, zipName);
+
+                setProgress(100);
+
+                setTimeout(() => {
+                  port.postMessage({ title: "", status: "" });
+                }, 3000);
+              })
+              .finally(() => {
+                console.info(`漫画打包完成`);
+              });
+          };
+
+          context_menu.append(li);
+        } else if (
+          mutation.target.id === "cover" &&
+          manga_id_regex.test(ele.id)
+        ) {
+          chooseBookEvent(ele);
+        } else {
+          console.debug(
+            "mutation.target.id",
+            mutation.target.id,
+            "ele.id",
+            ele.id
+          );
+        }
+      });
     } else {
-      console.debug("mutation", mutation);
+      console.debug(mutation);
     }
   }
-};
-
-function observe() {
-  // 创建一个观察器实例并传入回调函数
-  popoverObserver = new MutationObserver(popoverCallback);
-  // 以上述配置开始观察目标节点
-  popoverObserver.observe(popover, config);
-
-  popover.querySelectorAll("li").forEach((e) => {
-    changeRightMenu(e);
-  });
 }
 
-function disconnect() {
-  // 之后，可停止观察
-  popoverObserver.disconnect();
+const manga_id_regex = /(?<=library\-item\-option\-)\w+/;
+
+function chooseBookEvent(e) {
+  e.onmouseenter = () => {
+    const book = itemViewResponse.itemsList.find(
+      (book) => book.asin === manga_id_regex.exec(e.id)[0]
+    );
+    if (book) {
+      currentBook = book;
+      port.postMessage({ icon: "/img/icons/download.png" });
+      console.debug(`选中`, book);
+    } else {
+      port.postMessage({ icon: "/img/icons/download_error.png" });
+      console.error("无法识别漫画asin");
+    }
+  };
 }
 
-onload = async () => {
-  popover = document.querySelector("#cover");
-  console.debug("popover", popover);
+function observe(target) {
+  const li_list = document.querySelectorAll("li[id^='library']");
+  if (li_list.length > 0) {
+    console.debug("漫画已加载，直接修改漫画右键菜单事件");
 
-  const { showUseTip } = await chrome.storage.local.get(["showUseTip"]);
-
-  if (showUseTip) {
-    showFirstTipModal(popover, showUseTip, async () => {
-      await chrome.storage.local.set({ showUseTip: false });
-      console.info("不再显示使用帮助");
+    li_list.forEach((e) => {
+      chooseBookEvent(e);
     });
   }
 
-  itemViewResponse = JSON.parse(
-    document.querySelector("#itemViewResponse").innerText
-  );
-  console.debug("itemViewResponse", itemViewResponse);
+  console.info("监听父级节点", target);
 
-  if ([popover, itemViewResponse].some((item) => item === undefined)) {
-    throw new Error("初始化失败！！！！！！！！！！！！！！");
+  observerMap.has(target.id) && observerMap.get(target.id).disconnect();
+  let _o = new MutationObserver(backdroprCallback);
+
+  // 以上述配置开始观察目标节点
+  _o.observe(target, config);
+
+  observerMap.set(target.id, _o);
+}
+
+function disconnect() {
+  for (let [key, value] of observerMap) {
+    value.disconnect();
+    observerMap.delete(key);
   }
+}
+
+function showHelp(popover) {
+  chrome.storage.local.get(["showUseTip"]).then(({ showUseTip }) => {
+    if (showUseTip) {
+      showFirstTipModal(popover, showUseTip, async () => {
+        await chrome.storage.local.set({ showUseTip: false });
+        console.debug("不再显示使用帮助");
+      });
+    }
+  });
+}
+
+onload = async () => {
+  let popover = document.querySelector("#cover");
+  console.debug("popover", popover);
+
+  chrome.storage.local.get(["reloadRetry"]);
+  if (popover === null) {
+    showModal(document.body, "初始化失败，请手动刷新页面");
+    port.postMessage({ icon: "/img/icons/download_error.png" });
+    return;
+  } else {
+    port.postMessage({ icon: "/img/icons/download.png" });
+  }
+
+  itemViewResponse = await (
+    await fetch(
+      "/kindle-library/search?query=&libraryType=BOOKS&sortType=recency&resourceType=COMICS"
+    )
+  ).json();
+  console.debug("itemViewResponse", itemViewResponse);
 
   side_bar_filters = document.querySelectorAll("#side_bar_filters>li");
 
-  comic_menu = document.querySelector("#sidebar_group_SIDE_BAR_FILTERS_COMICS");
-
   side_bar_filters.forEach((child) => {
-    child.addEventListener("click", function (a) {
-      console.info("asin", a.target.id);
-      if (a.target.id === "sidebar_group_SIDE_BAR_FILTERS_COMICS") {
-        observe();
-      } else if (popoverObserver) {
+    child.addEventListener("click", async function (a) {
+      console.info("侧栏菜单选中", a.currentTarget.id);
+      if (
+        a.currentTarget.id === "sidebar_group_SIDE_BAR_FILTERS_COMICS" ||
+        a.currentTarget.id === "sidebar_group_SIDE_BAR_FILTERS_all"
+      ) {
+        observe(document.querySelector("#library"));
+      } else {
         disconnect();
       }
     });
   });
 
   //侧栏菜单选中漫画才开始监听
-  if (comic_menu.classList.contains("_3WNro9zd0be-e13VwjBm9S")) {
-    observe();
-  } else if (popoverObserver) {
+  if (
+    document.querySelector("#side_bar_filters button[aria-selected='true']")
+      .id === "sidebar_group_button_SIDE_BAR_FILTERS_COMICS" ||
+    document.querySelector("#side_bar_filters button[aria-selected='true']")
+      .id === "sidebar_group_button_SIDE_BAR_FILTERS_all"
+  ) {
+    let e = document.querySelector("#cover");
+    showHelp(e);
+    observe(e);
+  } else {
     disconnect();
   }
 };

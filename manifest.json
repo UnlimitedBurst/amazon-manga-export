@@ -14,6 +14,12 @@
   "icons": {
     "128": "img/icons/download.png"
   },
+  "web_accessible_resources":[
+    {
+      "resources": [ "img/icons/download.png"],
+      "matches": [ "https://read.amazon.co.jp/*" ]
+    }
+  ],
   "background": {
     "service_worker": "background.js"
   },
