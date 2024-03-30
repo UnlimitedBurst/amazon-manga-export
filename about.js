@@ -30,6 +30,10 @@ function showModal(popover, content) {
 </div>
 `;
 
+  tipModal.querySelector("div").onclick=e=>{
+     e.stopPropagation()
+  }
+
   popover.append(tipModal);
 }
 
@@ -53,6 +57,10 @@ function showOptionModal(
     tipModal.querySelector(".cancel").onclick = () => {
       resolve(false);
     };
+
+    tipModal.querySelector("div").onclick=e=>{
+       e.stopPropagation()
+    }
 
     popover.append(tipModal);
   });
@@ -103,6 +111,10 @@ function showFirstTipModal(popover, showUseTip, callback) {
     };
   } else {
     btn.remove();
+  }
+
+  tipModal.querySelector("div").onclick=e=>{
+    e.stopPropagation()
   }
 
   popover.append(tipModal);

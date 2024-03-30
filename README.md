@@ -4,4 +4,4 @@
 ### 技术支持
 * [Chrome Developers Extensions](https://developer.chrome.com/docs/extensions/)
 * [FileSaver.js](http://purl.eligrey.com/github/FileSaver.js)
-* [nprogress](https://github.com/rstacruz/nprogress)
+* [jszip](https://github.com/Stuk/jszip)

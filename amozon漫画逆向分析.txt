@@ -1,0 +1,139 @@
+逆向分析amonzon漫画加载js 速记
+
+加载阅读器配置
+constructClientOptions
+{
+    "version": "3.0",
+    "dpi": 160,
+    "fontSize": 4.95,
+    "fontFamily": "Bookerly",
+    "lineHeight": 1.4,
+    "marginTop": 0,
+    "marginBottom": 0,
+    "marginLeft": 9,
+    "marginRight": 9,
+    "pageWidth": 1704,
+    "pageHeight": 1269,
+    "includeLocationMap": true,
+    "maxNumberColumns": 2,
+    "theme": "dark"
+}
+
+https://read.amazon.co.jp/renderer/render
+
+Query String Parameters
+大部分参数来自阅读器配置
+version: 3.0
+asin: B0BKZB49P9
+contentType: FullBook
+revision: eac8d7c1 （来自构造漫画页面的HTML Dom一个id=bookInfo的JavaScript Object里）
+fontFamily: Bookerly
+fontSize: 4.95
+lineHeight: 1.4
+dpi: 160
+height: 1269
+width: 1705
+marginBottom: 0
+marginLeft: 9
+marginRight: 9
+marginTop: 0
+maxNumberColumns: 2
+theme: dark
+locationMap: true
+packageType: TAR
+encryptionVersion: NONE
+numPage: 2 (加载图片数量)
+skipPageCount: 0
+startingPosition: 1 
+bundleImages: false
+token: （初始化来自上述bookInfo的JavaScript Object里，token续期见下方生成karamelToken）
+
+
+加载render信息
+const c = yield this.metricsUtil.asyncExecuteMetrics("RequestKaramelData", (()=>this.fetch(l)))
+解析render返回的tar包数据
+ this.loadingPromise = new Promise(((e,t)=>{
+    try {
+        this.reader.init();
+        const n = new Array;
+        this.reader.getEntries().forEach((e=>{
+            const t = e.name;
+            t.startsWith("img_") || t.startsWith(a.ASSETS_DIR) || t.startsWith("rsrc") || t.endsWith(".png") ? n.push(this.addImage(e)) : t.startsWith("page_") ? n.push(this.addPage(e)) : t.startsWith("layout_data_") ? n.push(this.addLayoutPage(e)) : t.startsWith("tokens_") ? n.push(this.addTokens(e)) : t.startsWith("panels_") ? n.push(this.addPanels(e)) : "glyphs.json" === t ? n.push(this.addGlyphs(e)) : "toc.json" === t ? n.push(this.addTableOfContent(e)) : "metadata.json" === t ? n.push(this.addMetadata(e)) : "manifest.json" === t ? n.push(this.addManifest(e)) : "location_map.json" === t && n.push(this.addLocationMap(e))
+        }
+        )),
+        Promise.all(n).then(e).catch((e=>t(e)))
+    } catch (e) {
+        t(e)
+    }
+}
+))
+
+漫画页数等于locationMap.locations数组长度
+
+
+下载图片
+const c = yield this.metricsUtil.asyncExecuteMetrics("RequestImageFromCDN" + (o ? ":Encrypted" : ""), (()=>fetch(l)));
+
+https://d29ku0ooi7iqlp.cloudfront.net/B0BKZB49P9/eac8d7c1/fullbook/resource/rsrc191?Policy=eyJTdGF0ZW1lbnQiOiBbeyJSZXNvdXJjZSI6Imh0dHBzOi8vZDI5a3Uwb29pN2lxbHAuY2xvdWRmcm9udC5uZXQvQjBCS1pCNDlQOS9lYWM4ZDdjMS9mdWxsYm9vay8qIiwiQ29uZGl0aW9uIjp7IkRhdGVMZXNzVGhhbiI6eyJBV1M6RXBvY2hUaW1lIjoxNzExMDE2MzI2fX19XX0_&Signature=qi-4tAInLvpuICLkJkm~di2rJNb7L4t0EuWeksC9NRR5alzj8hUZ1M1UZYkZEMxli6TwzabXAdw22U3sDodHL8ayQCUapvsAzl-GteSeE2XdrD81hDms9rHWQjMKDQk6kdMbeT73xb0Nvr4JXrDVm8gdyLoL9XZs5Rq-dT2SAmRsQO0kAiYAxcAdH-qpzzwOc8J6H7FrLFob1OOUbQtcri-ERtJJO3pUTD4Z5cvtdCTXCcD28XaVJ4LxkwcDJKTOSdYwoA53uSnobCKThL8SvKYs9rmKKElfq~L260ripaU4DnzTmJ5XDxYCCzux25jAFZMu5iRJM2KN0Rad3qWV6A__&Key-Pair-Id=K39QOLRFW3R2L1&token=AgV4FvS71bjXdmo1iXDk1sJp496fO43%2B7JI4o3mjbThpEIoAhwACAA1Ub2tlbkNsaWVudElkABdLaW5kbGVXZWJSZWFkZXJQbGF0Zm9ybQAVYXdzLWNyeXB0by1wdWJsaWMta2V5AERBdng4OXM4OCtramZuYVRqbU4wZ1pha2FOT0NYODhUaXFQZWdkVE9XazM1S25KYUxLMjJkVEoxbS9xK3FOQzVVdUE9PQABAAdhd3Mta21zAEthcm46YXdzOmttczp1cy1lYXN0LTE6NjUyMjAxOTcwMzExOmtleS85MjlmNmU3MS1kODhlLTQwZTMtYTRlYi1hN2Q5YzE4ODNkODcAuAECAQB4I0O3T4BnPjwIRRoOqi1yuYGTGowT7O6%2FLi%2FMLKICXJ8BJ0fdBUrWUXNW4Nk38hUmjwAAAH4wfAYJKoZIhvcNAQcGoG8wbQIBADBoBgkqhkiG9w0BBwEwHgYJYIZIAWUDBAEuMBEEDA%2FZPVB%2FIsUOVgW01AIBEIA7MMSWboyT7zljMMUnvEVTn5To9KVe3uRn8oOS4cdwZJx3el3X06fZpwR18rBoi6h%2BjGZ63hj1BiksLA0CAAAQANH3solfnNnNewK63HRDamPt%2BJKSZmtWQ7OZ6uviewquGg8HBmPakwiea2KWSGXwMv%2F%2F%2F%2F8AAAABAAAAAAAAAAAAAAABAAABELJJw1EtUWo9gGDRpB8xFwlwxeH1ZrV9Q7euAk5tNLiSa8tBl%2FPS%2BTtNlQbTtoVcMeLvtr9%2F%2Fn1gnA2hf7lgmTNxi7w%2BclElF4lcDK7Ln%2BfK5%2B8%2BH3oEdlmn0FKgjNJSsnDM%2Bo0oeG2h1EAaYZEs9OvhHe2R2WxGkjZZlB4zBlEyrIx4Rd5Dkww6X0j5P5CTfHDuJ%2Fsnwg%2BfmbK%2F%2BGb0XEFHO%2BLUw3NYJLqr0mr7mSLtAFDd7ZL2bs9FLDNHX%2FA3VffMxv2FYjJdYSKrCg3zcjgw5n934kLMDYtJQqBcP7yJY4gusKADmXYMZxKWv6xzHrRQm3Okmst6C7xvbRyDHTpOlR4BQtGZ9mEn5j1H0lAC2MXsk3f65b%2FIfLkJqxhDlABnMGUCMQDmeo%2B0lfORu4saFLW%2BiXX1Sq5q2Ypu%2BQnETtRNFpACowCgrq47GTMXirX5KIiwXhICMHrods3k2bhEfGJp6hP2PTCUDkpR0Ch0%2B0m2yhG4dSQduhY0aWME%2F1Mvi1022JxLtA%3D%3D&expiration=1711019145754
+
+构造图片url
+manifest.cdn.baseUrl=https://d29ku0ooi7iqlp.cloudfront.net/B0BKZB49P9/eac8d7c1/fullbook
+manifest.cdnResources[0].url=resource/rsrc173
+
+url参数：
+Policy: eyJTdGF0ZW1lbnQiOiBbeyJSZXNvdXJjZSI6Imh0dHBzOi8vZDI5a3Uwb29pN2lxbHAuY2xvdWRmcm9udC5uZXQvQjBCS1pCNDlQOS9lYWM4ZDdjMS9mdWxsYm9vay8qIiwiQ29uZGl0aW9uIjp7IkRhdGVMZXNzVGhhbiI6eyJBV1M6RXBvY2hUaW1lIjoxNzExMDE2MzI2fX19XX0_
+Signature: qi-4tAInLvpuICLkJkm~di2rJNb7L4t0EuWeksC9NRR5alzj8hUZ1M1UZYkZEMxli6TwzabXAdw22U3sDodHL8ayQCUapvsAzl-GteSeE2XdrD81hDms9rHWQjMKDQk6kdMbeT73xb0Nvr4JXrDVm8gdyLoL9XZs5Rq-dT2SAmRsQO0kAiYAxcAdH-qpzzwOc8J6H7FrLFob1OOUbQtcri-ERtJJO3pUTD4Z5cvtdCTXCcD28XaVJ4LxkwcDJKTOSdYwoA53uSnobCKThL8SvKYs9rmKKElfq~L260ripaU4DnzTmJ5XDxYCCzux25jAFZMu5iRJM2KN0Rad3qWV6A__
+Key-Pair-Id: K39QOLRFW3R2L1
+
+来自manifest.cdnResources[0].authParameter
+----------------------------------------------
+token: AgV4FvS71bjXdmo1iXDk1sJp496fO43+7JI4o3mjbThpEIoAhwACAA1Ub2tlbkNsaWVudElkABdLaW5kbGVXZWJSZWFkZXJQbGF0Zm9ybQAVYXdzLWNyeXB0by1wdWJsaWMta2V5AERBdng4OXM4OCtramZuYVRqbU4wZ1pha2FOT0NYODhUaXFQZWdkVE9XazM1S25KYUxLMjJkVEoxbS9xK3FOQzVVdUE9PQABAAdhd3Mta21zAEthcm46YXdzOmttczp1cy1lYXN0LTE6NjUyMjAxOTcwMzExOmtleS85MjlmNmU3MS1kODhlLTQwZTMtYTRlYi1hN2Q5YzE4ODNkODcAuAECAQB4I0O3T4BnPjwIRRoOqi1yuYGTGowT7O6/Li/MLKICXJ8BJ0fdBUrWUXNW4Nk38hUmjwAAAH4wfAYJKoZIhvcNAQcGoG8wbQIBADBoBgkqhkiG9w0BBwEwHgYJYIZIAWUDBAEuMBEEDA/ZPVB/IsUOVgW01AIBEIA7MMSWboyT7zljMMUnvEVTn5To9KVe3uRn8oOS4cdwZJx3el3X06fZpwR18rBoi6h+jGZ63hj1BiksLA0CAAAQANH3solfnNnNewK63HRDamPt+JKSZmtWQ7OZ6uviewquGg8HBmPakwiea2KWSGXwMv////8AAAABAAAAAAAAAAAAAAABAAABELJJw1EtUWo9gGDRpB8xFwlwxeH1ZrV9Q7euAk5tNLiSa8tBl/PS+TtNlQbTtoVcMeLvtr9//n1gnA2hf7lgmTNxi7w+clElF4lcDK7Ln+fK5+8+H3oEdlmn0FKgjNJSsnDM+o0oeG2h1EAaYZEs9OvhHe2R2WxGkjZZlB4zBlEyrIx4Rd5Dkww6X0j5P5CTfHDuJ/snwg+fmbK/+Gb0XEFHO+LUw3NYJLqr0mr7mSLtAFDd7ZL2bs9FLDNHX/A3VffMxv2FYjJdYSKrCg3zcjgw5n934kLMDYtJQqBcP7yJY4gusKADmXYMZxKWv6xzHrRQm3Okmst6C7xvbRyDHTpOlR4BQtGZ9mEn5j1H0lAC2MXsk3f65b/IfLkJqxhDlABnMGUCMQDmeo+0lfORu4saFLW+iXX1Sq5q2Ypu+QnETtRNFpACowCgrq47GTMXirX5KIiwXhICMHrods3k2bhEfGJp6hP2PTCUDkpR0Ch0+0m2yhG4dSQduhY0aWME/1Mvi1022JxLtA==
+expiration: 1711019145754
+
+生成karamelToken
+https://read.amazon.co.jp/api/manga/getToken/B0B3GP5LKR
+
+B0B3GP5LKR 来自bookinfo asin
+
+图片数据解密（根据manifest.cdn.isEncrypted决定是否需要解密）
+[r(156)](e, t) {
+    return a(this, void 0, void 0, (function*() {
+        const n = o
+            , r = new TextDecoder(n(140))
+            , i = new TextEncoder
+            , a = r.decode(e)
+            , s = a[n(126)](0, 24)
+            , l = a[n(126)](24, 48)
+            , c = a[n(126)](48, a[n(149)])
+            , u = this[n(146)](s)
+            , d = this[n(146)](l)
+            , h = this[n(146)](c)
+            , f = this[n(130)][n(138)](t)
+            , p = yield window[n(123)].subtle[n(132)](n(122), i[n(134)](f), {
+            name: n(142)
+        }, !1, [n(141), n(120)])
+            , m = yield window[n(123)][n(128)][n(120)]({
+            name: "PBKDF2",
+            salt: u,
+            iterations: 1e3,
+            hash: n(121)
+        }, p, {
+            name: n(137),
+            length: 128
+        }, !1, [n(156)]);
+        return yield window[n(123)].subtle.decrypt({
+            name: n(137),
+            iv: d,
+            additionalData: i[n(134)](f[n(126)](0, 9)),
+            tagLength: 128
+        }, m, h)
+    }
+    ))
+}
+
+生成图片地址
+canvasToImage
+blobToImage
+
+
+
