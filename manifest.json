@@ -9,7 +9,7 @@
       "32": "img/icons/download.png"
     },
     "default_popup": "popup.html",
-    "default_title": "点击查看导出进度"
+    "default_title": "面板设置"
   },
   "icons": {
     "128": "img/icons/download.png"
@@ -31,6 +31,9 @@
         "FileSaver.min.js",
         "jszip.min.js",
         "content-script.js"
+      ],
+      "css":[
+        "content-script.css"
       ]
     }
   ]

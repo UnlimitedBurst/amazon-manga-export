@@ -1,0 +1,15 @@
+@keyframes fadeInFadeOut {  
+    0% {  
+      opacity: 0; /* 淡出效果开始 */  
+    }  
+    50% {  
+      opacity: 1; /* 完全可见 */  
+    }  
+    100% {  
+      opacity: 0; /* 淡出效果结束 */  
+    }  
+  }  
+    
+  .text-tip-animation {  
+    animation: fadeInFadeOut 2s linear infinite; /* 2秒完成一次淡入淡出，线性过渡，无限循环 */  
+  }
