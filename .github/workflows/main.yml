@@ -1,0 +1,37 @@
+name: zip
+on:
+  push:
+    tags:
+      - "v*.*.*"
+env:
+  ZIP_NAME: install
+  README_ME: README.txt
+jobs:
+  Run:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+
+      - name: install zip
+        run: |
+          sudo apt install zip
+
+      - name: Build zip
+        run: |
+          find . \( -path ./notes -o -path ./.git -o -path ./README.md -o -path ./.gitignore -o -path ./.github \) -prune -o -type f -print|xargs zip ${{env.ZIP_NAME}}.zip
+
+      - name: Test zip
+        run: |
+          zip -sf ${{env.ZIP_NAME}}.zip
+          echo -e "${{env.ZIP_NAME}}.zip是打包好的扩展程序，解压到任意目录，浏览器进入管理扩展程序页面，打开开发者模式，加载已解压的扩展程序即可。\n \
+          详情请看：https://github.com/UnlimitedBurst/amazon-manga-export/tree/master/notes" > ${{env.README_ME}}
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ${{env.ZIP_NAME}}.zip
+            ${{env.README_ME}}
+          token: ${{secrets.MY_TOKEN}}
