@@ -1,0 +1,33 @@
+name: zip
+on: [push]
+env:
+    ZIP_NAME: 亚马逊漫画下载器
+jobs:
+  Run:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+
+      - name: install zip
+        run: |
+          apt install zip  
+
+      - name: Build zip
+        run: |
+         find . \( -path ./notes -o -path ./.git -o -path ./README.md -o -path ./.gitignore \) -prune -o -type f -print|xargs zip ${{env.ZIP_NAME}}.zip
+
+      - name: Test zip
+        run: |
+         zip -sf ${{env.ZIP_NAME}}.zip
+
+      - uses: google-github-actions/release-please-action@v4
+        id: release
+
+      - name: Upload Release Artifact
+        if: ${{ steps.release.outputs.release_created }}
+        env:
+           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload ${{ steps.release.outputs.tag_name }} ${{env.ZIP_NAME}}.zip
+
