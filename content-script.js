@@ -1,5 +1,3 @@
-
-
 let itemViewResponse;
 
 let side_bar_filters;
@@ -16,8 +14,11 @@ let currentBook = null;
 
 let port;
 
-const download_complete=document.createElement("audio")
-download_complete.src=chrome.runtime.getURL("download-complete.wav");
+const download_complete = document.createElement("audio");
+download_complete.src = chrome.runtime.getURL("download-complete.wav");
+
+const windows_foreground=document.createElement("audio")
+windows_foreground.src=chrome.runtime.getURL("Windows_Foreground.mp3")
 
 chrome.runtime.onConnect.addListener((port) => {
   port.onMessage.addListener(async function (msg) {
@@ -408,6 +409,16 @@ async function getToken(asin) {
   return { token, expiresAt };
 }
 
+// 离开页面提示
+function addLeave() {
+  
+  onbeforeunload =  async () => {
+    console.info("检测到当前有漫画在导出，请确认一下操作。")
+
+    windows_foreground.play()
+  };
+}
+
 // 当观察到变动时执行的回调函数
 function backdroprCallback(mutationsList, observer) {
   for (let mutation of mutationsList) {
@@ -459,6 +470,8 @@ function backdroprCallback(mutationsList, observer) {
           } else {
             li.onclick = async (e) => {
               addNode.click();
+
+              addLeave();
 
               //检测是否有其他漫画正在导出
               const hasOtherDownloading =
@@ -549,6 +562,7 @@ function backdroprCallback(mutationsList, observer) {
               }
 
               function cancelTask() {
+                onbeforeunload=null
                 console.debug("导出已取消");
                 library_item_li.removeAttribute("data-progress");
                 div.remove();
@@ -880,8 +894,8 @@ function backdroprCallback(mutationsList, observer) {
                   const zipSize = formatBlobSize(content.size);
                   console.info("图片压缩包体积", zipSize);
                   const zipName = `${title}.zip`;
-               
-                  download_complete.play()
+
+                  download_complete.play();
 
                   saveAs(content, zipName);
 
@@ -892,6 +906,7 @@ function backdroprCallback(mutationsList, observer) {
                 .finally(() => {
                   console.info(`漫画打包完成`);
                   library_item_li.removeAttribute("data-progress");
+                  onbeforeunload=null
                 });
             };
           }

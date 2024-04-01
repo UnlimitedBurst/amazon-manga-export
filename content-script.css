@@ -1,15 +1,81 @@
-@keyframes fadeInFadeOut {  
-    0% {  
-      opacity: 0; /* 淡出效果开始 */  
-    }  
-    50% {  
-      opacity: 1; /* 完全可见 */  
-    }  
-    100% {  
-      opacity: 0; /* 淡出效果结束 */  
-    }  
-  }  
-    
-  .text-tip-animation {  
-    animation: fadeInFadeOut 2s linear infinite; /* 2秒完成一次淡入淡出，线性过渡，无限循环 */  
+@keyframes fadeInFadeOut {
+  0% {
+    opacity: 0; /* 淡出效果开始 */
   }
+  50% {
+    opacity: 1; /* 完全可见 */
+  }
+  100% {
+    opacity: 0; /* 淡出效果结束 */
+  }
+}
+
+/* 导出进度 */
+.text-tip-animation {
+  animation: fadeInFadeOut 2s linear infinite; /* 2秒完成一次淡入淡出，线性过渡，无限循环 */
+}
+
+@keyframes fadeOut {
+  0% {
+    opacity: 1; /* 淡出效果开始 */
+  }
+  100% {
+    opacity: 0; /* 淡出效果结束 */
+  }
+}
+
+.fadeOut {
+  animation: fadeOut 2s linear;
+}
+
+/* 模态框 */
+.modal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: fixed;
+  z-index: 1000;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.modal > .content {
+  width: 40%;
+  background: white;
+  padding: 10px;
+  border-radius: 10px;
+}
+
+.modal > .content > h3 {
+  text-align: center;
+}
+
+.modal > .content > p {
+  font-size: 20px;
+}
+
+.modal .confirm,
+.cancel {
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.modal .btn {
+  font-size: 18px;
+  background: gray;
+  width: 100px;
+  border-radius: 10px;
+  margin: 10px auto;
+  padding: 4px 4px;
+  color: white;
+  cursor: pointer;
+}
+
+.modal > .content > ol {
+  font-size: 20px;
+  text-align: left;
+}
