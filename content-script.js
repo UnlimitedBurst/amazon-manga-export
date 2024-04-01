@@ -1,10 +1,11 @@
+// 漫画数据
 let itemViewResponse;
 
+// 侧栏菜单
 let side_bar_filters;
 
+// 漫画列表元素、右键菜单元素观察
 let observerMap = new Map();
-
-let comic_menu;
 
 // 观察器的配置（需要观察什么变动）
 const config = { childList: true };
@@ -12,14 +13,18 @@ const config = { childList: true };
 // 选中的漫画封面id
 let currentBook = null;
 
+// 通信端口
 let port;
 
+// 下载完成音效
 const download_complete = document.createElement("audio");
 download_complete.src = chrome.runtime.getURL("download-complete.wav");
 
+// 下载中刷新、离开页面警告音效
 const windows_foreground=document.createElement("audio")
 windows_foreground.src=chrome.runtime.getURL("Windows_Foreground.mp3")
 
+// 监听端口通讯
 chrome.runtime.onConnect.addListener((port) => {
   port.onMessage.addListener(async function (msg) {
     if (msg.showHelp) {
@@ -37,6 +42,7 @@ function sleep(timeout) {
   });
 }
 
+// 建立通讯端口
 function createConnect() {
   port = chrome.runtime.connect({ name: "knockknock" });
   console.debug("content-script port", port);
@@ -55,6 +61,7 @@ function createConnect() {
   sendMessage({ msg: "hello" });
 }
 
+// 向端口发送信息
 function sendMessage(content) {
   let reply = 3;
   do {
@@ -66,6 +73,7 @@ function sendMessage(content) {
     }
   } while (reply-- > 0);
 }
+
 
 function base64StringToArrayBuffer(e) {
   const n = atob(e),
@@ -932,8 +940,10 @@ function backdroprCallback(mutationsList, observer) {
   }
 }
 
+// 匹配漫画asin的正确表达式
 const manga_id_regex = /(?<=library\-item\-option\-)\w+/;
 
+// 选中漫画事件
 function chooseBookEvent(e) {
   e.onmouseenter = () => {
     const book = itemViewResponse.itemsList.find(
@@ -950,6 +960,7 @@ function chooseBookEvent(e) {
   };
 }
 
+// 观察漫画列表、右键菜单元素生成
 function observe(target) {
   const li_list = document.querySelectorAll("li[id^='library']");
   if (li_list.length > 0) {
@@ -971,6 +982,7 @@ function observe(target) {
   observerMap.set(target.id, _o);
 }
 
+// 停止观察
 function disconnect() {
   for (let [key, value] of observerMap) {
     value.disconnect();
@@ -978,6 +990,7 @@ function disconnect() {
   }
 }
 
+// 展示使用帮助
 function showHelp(popover) {
   chrome.storage.local.get(["showUseTip"]).then(({ showUseTip }) => {
     if (showUseTip) {
@@ -1002,6 +1015,7 @@ onload = async () => {
     sendMessage({ icon: "/img/icons/download.png" });
   }
 
+  // 加载漫画数据
   itemViewResponse = await (
     await fetch(
       "/kindle-library/search?query=&libraryType=BOOKS&sortType=recency&resourceType=COMICS"
@@ -1011,6 +1025,7 @@ onload = async () => {
 
   side_bar_filters = document.querySelectorAll("#side_bar_filters>li");
 
+  // 侧栏菜单点击事件
   side_bar_filters.forEach((child) => {
     child.addEventListener("click", async function (a) {
       console.info("侧栏菜单选中", a.currentTarget.id);
