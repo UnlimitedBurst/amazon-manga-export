@@ -16,6 +16,9 @@ let currentBook = null;
 
 let port;
 
+const download_complete=document.createElement("audio")
+download_complete.src=chrome.runtime.getURL("download-complete.wav");
+
 chrome.runtime.onConnect.addListener((port) => {
   port.onMessage.addListener(async function (msg) {
     if (msg.showHelp) {
@@ -815,7 +818,7 @@ function backdroprCallback(mutationsList, observer) {
 
                           await sleep(errWait);
 
-                          if (c.status === 403) {
+                          if (c && c.status === 403) {
                             let newAuth = await refreshAuth();
 
                             baseUrl = newAuth.baseUrl;
@@ -828,7 +831,7 @@ function backdroprCallback(mutationsList, observer) {
                               children[childIndex].cdnResources.authParameter;
 
                             debugger;
-                          } else if (c.status === 419) {
+                          } else if (c && c.status === 419) {
                             const karamelToken = await getToken(asin);
                             expiresAt = karamelToken.karamelToken;
                             token = karamelToken.token;
@@ -877,13 +880,8 @@ function backdroprCallback(mutationsList, observer) {
                   const zipSize = formatBlobSize(content.size);
                   console.info("图片压缩包体积", zipSize);
                   const zipName = `${title}.zip`;
-                  chrome.storage.local.set({
-                    [asin]: {
-                      url: URL.createObjectURL(content),
-                      size: zipSize,
-                      name: zipName,
-                    },
-                  });
+               
+                  download_complete.play()
 
                   saveAs(content, zipName);
 
