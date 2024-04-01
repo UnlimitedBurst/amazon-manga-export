@@ -18,11 +18,11 @@ let port;
 
 // 下载完成音效
 const download_complete = document.createElement("audio");
-download_complete.src = chrome.runtime.getURL("download-complete.wav");
+download_complete.src = chrome.runtime.getURL("media/download-complete.wav");
 
 // 下载中刷新、离开页面警告音效
 const windows_foreground=document.createElement("audio")
-windows_foreground.src=chrome.runtime.getURL("Windows_Foreground.mp3")
+windows_foreground.src=chrome.runtime.getURL("media/Windows_Foreground.mp3")
 
 // 监听端口通讯
 chrome.runtime.onConnect.addListener((port) => {

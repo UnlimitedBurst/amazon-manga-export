@@ -16,7 +16,7 @@
   },
   "web_accessible_resources":[
     {
-      "resources": [ "img/icons/download.png","download-complete.wav","Windows_Foreground.mp3"],
+      "resources": [ "img/icons/*","media/*"],
       "matches": [ "https://read.amazon.co.jp/*" ]
     }
   ],
