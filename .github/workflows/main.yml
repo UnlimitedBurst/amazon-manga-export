@@ -19,7 +19,7 @@ jobs:
 
       - name: Build zip
         run: |
-          find . \( -path ./notes -o -path ./.git -o -path ./README.md -o -path ./.gitignore \) -prune -o -type f -print|xargs zip ${{env.ZIP_NAME}}.zip
+          find . \( -path ./notes -o -path ./.git -o -path ./README.md -o -path ./.gitignore -o -path ./.github \) -prune -o -type f -print|xargs zip ${{env.ZIP_NAME}}.zip
 
       - name: Test zip
         run: |
