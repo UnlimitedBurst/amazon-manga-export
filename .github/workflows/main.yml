@@ -1,5 +1,8 @@
 name: zip
-on: [push]
+on:
+  push:
+    tags:
+      - "v*.*.*"
 env:
   ZIP_NAME: 亚马逊漫画下载器
 jobs:
@@ -22,13 +25,7 @@ jobs:
         run: |
           zip -sf ${{env.ZIP_NAME}}.zip
 
-      - uses: google-github-actions/release-please-action@v4
-        id: release
+      - name: Release
+        uses: softprops/action-gh-release@v2
         with:
-          release-type: simple
-
-      - name: Upload Release Artifact
-        if: ${{ steps.release.outputs.release_created }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload ${{ steps.release.outputs.tag_name }} ${{env.ZIP_NAME}}.zip
+          files: ${{env.ZIP_NAME}}.zip
