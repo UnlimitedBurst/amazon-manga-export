@@ -456,7 +456,6 @@ async function main(){
 
   // 添加下载进度元素
   let download_progress_bg = document.createElement('div')
-  download_progress_bg.id='download_progress_bg'
   download_progress_bg.style.cssText=`width: 100%;height: 10px;background-color: gray;`
   download_progress_bg.innerHTML=`<div  style="width:0;height: 100%;background-color: red;"/>`
   let download_progress=download_progress_bg.querySelector('div')
@@ -675,7 +674,7 @@ async function main(){
       file_db.set(zipName,content)
       saveAs(content, zipName);
 
-      document.querySelector('#download_progress_bg').remove()
+      download_progress_bg.remove()
     })
     .finally(() => {
       console.info(`漫画打包完成`);
