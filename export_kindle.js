@@ -331,6 +331,10 @@ onload=()=>{
   
   menu_observer&&menu_observer.disconnect()
   let menu=null
+
+  let bookInfo = document.querySelector("#bookInfo");
+  
+  let bookInfoJson = JSON.parse(bookInfo.innerText);
   do{
     sleep(200)
     menu=document.querySelector(".kw-rd-chrome-dot-menu")
@@ -339,18 +343,66 @@ onload=()=>{
     menu_observer=new MutationObserver(([{addedNodes}])=>{
     if(addedNodes.length===1&&addedNodes[0].id==='readerDotMenu'){
       let menu_list=document.querySelector('.kw-rd-dot-menu-items-list')
-      let li=menu_list.querySelector('li:last-child').cloneNode(true)
-      let button=li.querySelector('button')
-      button.id='export_kindle'
-      button.innerText='导出'
-      button.onclick=()=>{
-        
-        if(confirm(`将会在后台打包漫画图片资源，请留意页面底部翻页进度下方的红色打包进度条，打包完成会出现一个以漫画标题命名的文件另存为弹窗，点击确定继续`)){
-          main()
+      let li,button
+
+      function create_export_menu(text){
+        li=menu_list.querySelector('li:last-child').cloneNode(true)
+        button=li.querySelector('button')
+        button.id='export_kindle'
+        button.innerText='导出'
+        button.onclick=()=>{
+          
+          if(confirm(text)){
+            main(bookInfoJson)
+          }
+          document.querySelector('#readerChromeTitleBar').click()
         }
-        document.querySelector('#readerChromeTitleBar').click()
+        menu_list.appendChild(li)
       }
-      menu_list.appendChild(li)
+
+      const zipName=bookInfoJson.title+'.zip'
+      file_db.keys().then(async (keys)=>{
+        
+        if(keys.includes(zipName)){
+          create_export_menu(`将会读取缓存图片数据保存到本地，点击确定继续`)
+          li=menu_list.querySelector('li:last-child').cloneNode(true)
+          button=li.querySelector('button')
+          button.id='clear_current_comic'
+          
+          const {[zipName]:blob}=await file_db.get(zipName)
+          button.innerText=`清空本漫画缓存的${formatBlobSize(blob.size)}数据`
+          button.onclick=()=>{
+            file_db.del(zipName)
+
+            document.querySelector('#readerChromeTitleBar').click()
+          }
+          menu_list.appendChild(li)
+          
+        }else{
+          create_export_menu(`将会在后台打包漫画图片资源，请留意页面底部翻页进度下方的红色打包进度条，打包完成会出现一个默认以漫画标题命名的文件另存为弹窗，点击确定继续`)
+        }
+
+
+        if(keys.length>0){
+          li=menu_list.querySelector('li:last-child').cloneNode(true)
+          button=li.querySelector('button')
+          button.id='clear_all_comic'
+
+          const all_manga_data=await file_db.all()
+          let manga_value=Object.values(all_manga_data)
+          
+          button.innerText=`清空所有漫画缓存的${formatBlobSize(manga_value.reduce((a,b)=>{a+=b.size;return a},0))}数据`
+          button.onclick=()=>{
+            file_db.clear()
+
+            document.querySelector('#readerChromeTitleBar').click()
+          }
+          menu_list.appendChild(li)
+        }
+
+      })
+
+      
     }
   })
   menu_observer.observe(menu,{subtree:true,childList:true})
@@ -358,11 +410,9 @@ onload=()=>{
 onbeforeunload=()=>{
   menu_observer&&menu_observer.disconnect()
 }
-async function main(){
+async function main(bookInfoJson){
   const startTime = Date.now();
-  let bookInfo = document.querySelector("#bookInfo");
   
-  let bookInfoJson = JSON.parse(bookInfo.innerText);
   let { contentGuid: revision, asin, title } = bookInfoJson;
   //打包文件名
   const zipName = `${title}.zip`;
