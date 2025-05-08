@@ -383,6 +383,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   console.info(`总共要下载${imageLength}张图片`);
 
   let pageCount = 0;
+  let progress
   let totalSize = 0;
   let startingPosition = 1;
   let { per_img_timeout, page_timeout } = {
@@ -566,6 +567,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
             }
           }
         }
+
+        progress = +((pageCount * 100) / imageLength).toFixed(2);
+        console.info(`处理进度：${progress}%`)
       }
 
       startingPosition = endPositionId + 1;
@@ -575,8 +579,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     
     }
    
-    let progress = +((pageCount * 100) / imageLength).toFixed(2);
-    console.info(`处理进度：${progress}%`)
+    
   } while (pageCount<imageLength);
 
 
