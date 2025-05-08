@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         导出日亚kindle漫画
+// @name         导出日亚Kindle漫画
 // @namespace    http://tampermonkey.net/
 // @version      0.1
 // @description  从漫画阅读器页面打包图片资源导出到本地
