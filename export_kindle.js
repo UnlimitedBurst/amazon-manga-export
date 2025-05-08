@@ -1,15 +1,15 @@
 // ==UserScript==
 // @name         导出日亚kindle漫画
 // @namespace    http://tampermonkey.net/
-// @version      2025-05-08
-// @description  try to take over the world!
-// @author       You
+// @version      0.1
+// @description  从漫画阅读器页面打包图片资源导出到本地
+// @updateURL       https://github.com/UnlimitedBurst/amazon-manga-export/blob/master/export_kindle.js
+// @downloadURL     https://github.com/UnlimitedBurst/amazon-manga-export/blob/master/export_kindle.js
 // @match        https://read.amazon.co.jp/manga/*
 // @require      https://unpkg.com/jszip@3.10.1/dist/jszip.js
 // @require      https://unpkg.com/@sifrr/storage@0.0.9/dist/sifrr.storage.js
 // @require      https://unpkg.com/file-saver@2.0.5/dist/FileSaver.js
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=amazon.co.jp
-// @grant        none
 // ==/UserScript==
 
 // 等待
