@@ -46,7 +46,11 @@ numPage: 2 (加载图片数量)
 skipPageCount: 0
 startingPosition: 1 
 bundleImages: false
-token: （初始化来自上述bookInfo的JavaScript Object里，token续期见下方生成karamelToken）
+
+请求头
+x-amz-rendering-token: （初始化来自上述bookInfo的JavaScript Object里，token续期见下方生成karamelToken）
+
+
 
 
 加载render信息
@@ -90,8 +94,50 @@ Key-Pair-Id: K39QOLRFW3R2L1
 token: AgV4FvS71bjXdmo1iXDk1sJp496fO43+7JI4o3mjbThpEIoAhwACAA1Ub2tlbkNsaWVudElkABdLaW5kbGVXZWJSZWFkZXJQbGF0Zm9ybQAVYXdzLWNyeXB0by1wdWJsaWMta2V5AERBdng4OXM4OCtramZuYVRqbU4wZ1pha2FOT0NYODhUaXFQZWdkVE9XazM1S25KYUxLMjJkVEoxbS9xK3FOQzVVdUE9PQABAAdhd3Mta21zAEthcm46YXdzOmttczp1cy1lYXN0LTE6NjUyMjAxOTcwMzExOmtleS85MjlmNmU3MS1kODhlLTQwZTMtYTRlYi1hN2Q5YzE4ODNkODcAuAECAQB4I0O3T4BnPjwIRRoOqi1yuYGTGowT7O6/Li/MLKICXJ8BJ0fdBUrWUXNW4Nk38hUmjwAAAH4wfAYJKoZIhvcNAQcGoG8wbQIBADBoBgkqhkiG9w0BBwEwHgYJYIZIAWUDBAEuMBEEDA/ZPVB/IsUOVgW01AIBEIA7MMSWboyT7zljMMUnvEVTn5To9KVe3uRn8oOS4cdwZJx3el3X06fZpwR18rBoi6h+jGZ63hj1BiksLA0CAAAQANH3solfnNnNewK63HRDamPt+JKSZmtWQ7OZ6uviewquGg8HBmPakwiea2KWSGXwMv////8AAAABAAAAAAAAAAAAAAABAAABELJJw1EtUWo9gGDRpB8xFwlwxeH1ZrV9Q7euAk5tNLiSa8tBl/PS+TtNlQbTtoVcMeLvtr9//n1gnA2hf7lgmTNxi7w+clElF4lcDK7Ln+fK5+8+H3oEdlmn0FKgjNJSsnDM+o0oeG2h1EAaYZEs9OvhHe2R2WxGkjZZlB4zBlEyrIx4Rd5Dkww6X0j5P5CTfHDuJ/snwg+fmbK/+Gb0XEFHO+LUw3NYJLqr0mr7mSLtAFDd7ZL2bs9FLDNHX/A3VffMxv2FYjJdYSKrCg3zcjgw5n934kLMDYtJQqBcP7yJY4gusKADmXYMZxKWv6xzHrRQm3Okmst6C7xvbRyDHTpOlR4BQtGZ9mEn5j1H0lAC2MXsk3f65b/IfLkJqxhDlABnMGUCMQDmeo+0lfORu4saFLW+iXX1Sq5q2Ypu+QnETtRNFpACowCgrq47GTMXirX5KIiwXhICMHrods3k2bhEfGJp6hP2PTCUDkpR0Ch0+0m2yhG4dSQduhY0aWME/1Mvi1022JxLtA==
 expiration: 1711019145754
 
-生成karamelToken
-https://read.amazon.co.jp/api/manga/getToken/B0B3GP5LKR
+//生成karamelToken
+return Qp(void 0, void 0, void 0, (function() {
+                    var e;
+                    return Jp(this, (function(r) {
+                        switch (r.label) {
+                        case 0:
+                            return [4, At({
+                                url: "/api/manga/getToken/" + t,
+                                queryParams: {
+                                    sample: String(n)
+                                },
+                                retryConfig: {
+                                    totalRetries: 2,
+                                    requestBackoff: ce
+                                }
+                            })];
+                        case 1:
+                            return (e = r.sent()).ok ? [2, e.json()] : [2, Promise.reject(new wt("Error fetching karamel token.",{
+                                response: JSON.stringify(e),
+                                asin: t,
+                                isSample: String(n)
+                            }))]
+                        }
+                    }
+                    ))
+                }
+                ))
+
+//token超时检测
+ callRenderBook(e, t) {
+    return a(this, void 0, void 0, (function*() {
+        if (null == this.karamelToken || Date.now() + u.TOKEN_EXPIRED_THRESHOLD > this.karamelToken.expiresAt)
+            try {
+                this.karamelToken = yield t.getToken()
+            } catch (e) {
+                throw new c(JSON.stringify(e))
+            }
+        if (!this.karamelToken)
+            throw new l;
+        return this.locationMapIsLoaded = !0,
+        i.D.renderBook(e, this.karamelToken)
+    }
+    ))
+}
 
 B0B3GP5LKR 来自bookinfo asin
 
