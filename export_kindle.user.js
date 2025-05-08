@@ -3,8 +3,8 @@
 // @namespace    http://tampermonkey.net/
 // @version      0.1
 // @description  从漫画阅读器页面打包图片资源导出到本地
-// @updateURL       https://github.com/UnlimitedBurst/amazon-manga-export/blob/master/export_kindle.js
-// @downloadURL     https://github.com/UnlimitedBurst/amazon-manga-export/blob/master/export_kindle.js
+// @updateURL       https://github.com/UnlimitedBurst/amazon-manga-export/blob/master/export_kindle.user.js
+// @downloadURL     https://github.com/UnlimitedBurst/amazon-manga-export/blob/master/export_kindle.user.js
 // @match        https://read.amazon.co.jp/manga/*
 // @require      https://unpkg.com/jszip@3.10.1/dist/jszip.js
 // @require      https://unpkg.com/@sifrr/storage@0.0.9/dist/sifrr.storage.js
