@@ -313,9 +313,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
 
 
-(async function () {
-  "use strict";
 
+
+onload=async ()=>{
   const startTime = Date.now();
 
   let bookInfo = document.querySelector("#bookInfo");
@@ -396,6 +396,26 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
   const zip = new JSZip();
 
+  // 获取原始翻页进度元素
+  const originalDiv = document.querySelector('#readerChromeBottomSlider-inner');
+  // 添加下载进度元素
+  let download_progress=null
+  do{
+    download_progress = document.createElement('div')
+    await sleep(100)
+  }while(download_progress===null)
+
+  download_progress.style.cssText = `
+                  position: absolute;
+                  width: 0%;
+                  height: 5px;
+                  right: 0px;
+                  background-color: red;
+                  bottom: 0;`
+  originalDiv.after(download_progress )
+
+  // debugger
+
   do {
     console.debug("startingPosition", startingPosition);
 
@@ -447,8 +467,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     let { baseUrl, isEncrypted, pageData, cdnResources, authParameter } =
       await refreshAuth();
 
-   
-
+  
     console.debug(`分段信息`, pageData);
 
     console.info("开始下载图片");
@@ -577,11 +596,14 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       console.debug(`打包${filename}.jfif`);
       filename && zip.file(`${filename}.jfif`, lastImgBlob);
     
+
+      download_progress.style.width = `${progress}%`
     }
-   
+  
     
   } while (pageCount<imageLength);
 
+  download_progress.style.width ='100%'
 
   console.info(
     `${imageLength}张图片打包完成，累计处理时间${formatMillisecondsToMinutesSeconds(
@@ -610,6 +632,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       console.info(`漫画打包完成`);
       onbeforeunload = null;
     });
+}
 
-})();
 
