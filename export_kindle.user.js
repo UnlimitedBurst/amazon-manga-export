@@ -10,6 +10,7 @@
 // @require      https://unpkg.com/@sifrr/storage@0.0.9/dist/sifrr.storage.js
 // @require      https://unpkg.com/file-saver@2.0.5/dist/FileSaver.js
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=amazon.co.jp
+// @grant        none
 // ==/UserScript==
 
 // 等待
@@ -511,19 +512,19 @@ async function main(bookInfoJson){
 
       const pageData = [];
       for (const { children, endPositionId } of pages.values()) {
-        children.map((item) => {
+        let img_filter=children.filter(item=>item.type==='image')
+        img_filter.forEach((item) => {
           item.cdnResources = cdnResources.find(
             ({ url }) => item.imageReference === url
           );
           if (item.cdnResources === undefined) {
             console.error(`无法找到图片【${item.imageReference}】二进制数据`);
           }
-          return item;
         });
 
         pageData.push({
           endPositionId,
-          children: children.sort((a, b) => b.elementId - a.elementId),
+          children: img_filter.sort((a, b) => b.elementId - a.elementId),
         });
       }
       return {
